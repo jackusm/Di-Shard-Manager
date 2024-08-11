@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Settings Panel -->
+    <Frame name="DiShardManagerOptionsPanel" parent="UIParent" hidden="true">
+        <Size x="400" y="200"/>
+        <Anchors>
+            <Anchor point="CENTER"/>
+        </Anchors>
+        <Scripts>
+            <OnLoad>
+                -- This is where the Lua script will hook into the frame
+            </OnLoad>
+        </Scripts>
+    </Frame>
+</Ui>

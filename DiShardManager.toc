@@ -1,0 +1,8 @@
+## Interface: 11503
+## Title: Di Shard Manager
+## Notes: Deletes a customizable number of Soul Shards.
+## Author: Dicrypt
+## Version: 1.0
+
+DiShardManager.xml
+DiShardManager.lua
