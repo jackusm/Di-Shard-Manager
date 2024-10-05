@@ -1,30 +1,60 @@
--- Define default settings
-local defaultSettings = {
-    maxShardsToKeep = 10
+local _, AddOn = ...
+local Settings = {}
+Settings.DefaultSettings = {
+    ["maxShardsToKeep"] = 10,
 }
+Settings.Options = {}
+AddOn.Settings = Settings
 
--- Create a table to hold the settings
-local settings = {}
+-- Settings Handlers
+function AddOn.AddOptionsCategory(name)
+    local category, layout = _G.Settings.RegisterVerticalLayoutCategory(name)
+    _G.Settings.RegisterAddOnCategory(category)
+    return category
+end
+function AddOn.OnSettingChanged(_, setting, value)
+    local variable = setting:GetVariable()
+    Settings.Options[variable] = value
+end
 
--- Function to initialize settings
-local function InitializeSettings()
-    settings.maxShardsToKeep = defaultSettings.maxShardsToKeep
-    local savedSettings = GetAddOnMetadata("DiShardManager", "SavedVars")
-    if savedSettings then
-        settings.maxShardsToKeep = savedSettings.maxShardsToKeep or defaultSettings.maxShardsToKeep
+-- Settings Initialization
+Settings.Interface = {
+    GeneralPanel = AddOn.AddOptionsCategory("DiShardManager")
+}
+function Settings.Setup()
+    do
+        local variable = "maxShardsToKeep"
+        local name = "Maximum Shards"
+        local tooltip = "The maximum number of shards to keep."
+        local defaultValue = Settings.DefaultSettings[variable]
+        local currentValue = Settings.Options[variable]
+        local minValue = 0
+        local maxValue = 50
+        local step = 1
+
+        local setting = _G.Settings.RegisterAddOnSetting(
+            Settings.Interface.GeneralPanel,
+            variable,
+            variable,
+            Settings.Options,
+            type(defaultValue),
+            name,
+            defaultValue
+        )
+        local options = _G.Settings.CreateSliderOptions(minValue, maxValue, step)
+        options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right);
+        _G.Settings.SetValue(variable, currentValue)
+        _G.Settings.CreateSlider(Settings.Interface.GeneralPanel, setting, options, tooltip)
+        _G.Settings.SetOnValueChangedCallback(variable, AddOn.OnSettingChanged)
     end
 end
 
--- Function to save settings
-local function SaveSettings()
-    local savedSettings = {}
-    savedSettings.maxShardsToKeep = settings.maxShardsToKeep
-    SetAddOnMetadata("DiShardManager", "SavedVars", savedSettings)
-end
+
+
 
 -- Function to delete excess Soul Shards
 local function DeleteExcessSoulShards()
-    local maxToKeep = settings.maxShardsToKeep
+    local maxToKeep = Settings.Options["maxShardsToKeep"]
     local totalShards = 0
     local shardLocations = {}
 
@@ -63,50 +93,47 @@ local function DeleteExcessSoulShards()
     end
 end
 
--- Function to create the settings panel
-local function CreateOptionsPanel()
-    local panel = CreateFrame("Frame", "DiShardManagerOptionsPanel", UIParent)
-    panel.name = "DiShardManager"
 
-    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 16, -16)
-    title:SetText("DiShardManager Settings")
 
-    local maxShardsSlider = CreateFrame("Slider", "DiShardManagerMaxShardsSlider", panel, "OptionsSliderTemplate")
-    maxShardsSlider:SetPoint("TOPLEFT", 16, -60)
-    maxShardsSlider:SetMinMaxValues(1, 100)
-    maxShardsSlider:SetValueStep(1)
-    maxShardsSlider:SetValue(settings.maxShardsToKeep)
-    maxShardsSlider:SetObeyStepOnDrag(true)
-    _G[maxShardsSlider:GetName() .. "Low"]:SetText("1")
-    _G[maxShardsSlider:GetName() .. "High"]:SetText("100")
-
-    local maxShardsText = _G[maxShardsSlider:GetName() .. "Text"]
-    maxShardsText:SetText("Max Shards to Keep: " .. settings.maxShardsToKeep)
-
-    maxShardsSlider:SetScript("OnValueChanged", function(self, value)
-        settings.maxShardsToKeep = math.floor(value)
-        maxShardsText:SetText("Max Shards to Keep: " .. settings.maxShardsToKeep)
-    end)
-
-    InterfaceOptions_AddCategory(panel)
-end
-
--- Function to handle slash commands
-local function SlashCommandHandler(msg)
+-- Register the slash command
+SLASH_DISHARDMANAGER1 = "/dism"
+SlashCmdList["DISHARDMANAGER"] = function(msg)
     if msg == "delete" then
         DeleteExcessSoulShards()
     elseif msg == "settings" then
-        InterfaceOptionsFrame_OpenToCategory("DiShardManager")
+        _G.SettingsPanel:Open()
+        _G.SettingsPanel:SelectCategory(Settings.Interface.GeneralPanel, true)
     else
         print("Usage: /dism [delete|settings]")
     end
 end
 
--- Register the slash command
-SLASH_DISHARDMANAGER1 = "/dism"
-SlashCmdList["DISHARDMANAGER"] = SlashCommandHandler
 
--- Initialize settings and create UI elements
-InitializeSettings()
-CreateOptionsPanel()
+
+-- Event Handlers
+function AddOn:ADDON_LOADED(addon)
+    if not addon == "DiShardManager" then
+        return
+    end
+    
+    AddOn.eventFrame:UnregisterEvent("ADDON_LOADED")
+
+    Settings.Options = _G["DiShardManager_Settings"] or Settings.DefaultSettings
+    Settings.Setup()
+end
+function AddOn:PLAYER_LOGOUT(addon)
+    _G["DiShardManager_Settings"] = Settings.Options
+end
+
+-- Register Events
+AddOn.eventFrame = CreateFrame("Frame", nil, UIParent)
+AddOn.eventFrame:SetScript(
+    "OnEvent",
+    function(self, event, ...)
+        if AddOn[event] then
+            AddOn[event](AddOn, ...)
+        end
+    end
+)
+AddOn.eventFrame:RegisterEvent("ADDON_LOADED")
+AddOn.eventFrame:RegisterEvent("PLAYER_LOGOUT")
