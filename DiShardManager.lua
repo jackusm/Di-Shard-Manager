@@ -98,11 +98,18 @@ end
 -- Register the slash command
 SLASH_DISHARDMANAGER1 = "/dism"
 SlashCmdList["DISHARDMANAGER"] = function(msg)
+    local command, value = strsplit(" ", msg)
+
     if msg == "delete" then
         DeleteExcessSoulShards()
     elseif msg == "settings" then
         _G.SettingsPanel:Open()
         _G.SettingsPanel:SelectCategory(Settings.Interface.GeneralPanel, true)
+    elseif command == "max" then
+        local num = tonumber(value)
+        if num and num >= 0 then
+            Settings.Options["maxShardsToKeep"] = num
+        end
     else
         print("Usage: /dism [delete|settings]")
     end
